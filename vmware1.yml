@@ -1,109 +1,30 @@
 ---
-- name: Gestion de Host VMware ESXi 8 Standalone
-  hosts: localhost
+- name: Validar Conexion a VMware ESXi 8
+  hosts: esxi-01.pclinux.com
   gather_facts: false
   vars:
-    # Solo mantenemos la IP y el control de certificados
-    # (Si configuraste el Host en la credencial de AAP, incluso podrías omitir esto)
-    esxi_hostname: "192.168.1.220"
-    validate_certs: false
-
+    ansible_python_interpreter: /usr/bin/python3
   tasks:
-    # 1. Obtener información de estado y versión del Host ESXi
-    - name: 1. Recopilar todos los facts del hipervisor
-      community.vmware.vmware_host_info:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
+    - name: Inyectar pyvmomi dentro del contenedor
+      ansible.builtin.pip:
+        name: pyvmomi
+        state: present
+        executable: /usr/bin/pip3
+      delegate_to: localhost
+
+    - name: Consultar API de VMware
+      community.vmware.vmware_host_facts:
+        hostname: "{{ ansible_host | default('192.168.1.220') }}"
+        username: "{{ lookup('ansible.builtin.env', 'VMWARE_USER') }}"
+        password: "{{ lookup('ansible.builtin.env', 'VMWARE_PASSWORD') }}"
+        validate_certs: false
+      delegate_to: localhost
       register: host_facts
 
-    - name: Imprimir la version del ESXi
+    - name: ¡LOGRADO!
       ansible.builtin.debug:
-        msg: "El host esta ejecutando la version: {{ host_facts.hosts_info[esxi_hostname].Host_Software_Version }}"
-
-    # 2. Generar un inventario visual de las Máquinas Virtuales actuales
-    - name: 2. Consultar la API para extraer el registro de VMs
-      community.vmware.vmware_vm_info:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-      register: listado_vms
-
-    - name: Mostrar unicamente los nombres de las maquinas
-      ansible.builtin.debug:
-        var: listado_vms.virtual_machines | map(attribute='guest_name') | list
-
-    # 3. Crear una Máquina Virtual desde cero
-    - name: 3. Crear contenedor lógico de VM
-      community.vmware.vmware_guest:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        name: "Servidor_Aplicativo_01"
-        state: present
-        guest_id: "windows2019srv_64Guest"
-        datastore: "datastore1"
-        hardware:
-          memory_mb: 4096
-          num_cpus: 2
-          scsi: paravirtual
-
-    # 4. Encender una Máquina Virtual existente
-    - name: 4. Mandar señal ACPI de encendido
-      community.vmware.vmware_guest_powerstate:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        name: "Servidor_Aplicativo_01"
-        state: powered-on
-
-    # 5. Apagar una Máquina Virtual de forma segura
-    - name: 5. Solicitar apagado a traves de VMware Tools
-      community.vmware.vmware_guest_powerstate:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        name: "Servidor_Aplicativo_01"
-        state: shut-down
-
-    # 6. Tomar un Snapshot (Instantánea)
-    - name: 6. Capturar el estado completo de la VM
-      community.vmware.vmware_guest_snapshot:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        name: "Servidor_Aplicativo_01"
-        state: present
-        snapshot_name: "Backup_Pre_Modificacion"
-
-    # 7. Revertir a un Snapshot anterior
-    - name: 7. Volver al punto de control seguro
-      community.vmware.vmware_guest_snapshot:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        name: "Servidor_Aplicativo_01"
-        state: revert
-        snapshot_name: "Backup_Pre_Modificacion"
-
-    # 8. Auditar la capacidad del Datastore
-    - name: 8. Consultar metricas del Datastore
-      community.vmware.vmware_datastore_info:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-      register: metrica_datastore
-
-    - name: Mostrar datos extraidos del Datastore
-      ansible.builtin.debug:
-        var: metrica_datastore
-
-    # 9. Crear un Conmutador Virtual (vSwitch)
-    - name: 9. Configurar nuevo vSwitch aislando trafico
-      community.vmware.vmware_vswitch:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        switch: "vSwitch_Backend"
-        nics: "vmnic1"
-        state: present
-
-    # 10. Crear un Portgroup
-    - name: 10. Definir el segmento de red y VLAN
-      community.vmware.vmware_portgroup:
-        hostname: "{{ esxi_hostname }}"
-        validate_certs: "{{ validate_certs }}"
-        switch: "vSwitch_Backend"
-        portgroup: "Red_VLAN50"
-        vlan_id: 50
+        msg: 
+          - "¡CONEXIÓN EXITOSA CON PCLINUX PERÚ!"
+          - "Distribucion: {{ host_facts.ansible_facts.ansible_distribution }}"
+          - "Version: {{ host_facts.ansible_facts.ansible_distribution_version }}"
+          - "Plataforma: {{ host_facts.ansible_facts.ansible_product_name }}"
