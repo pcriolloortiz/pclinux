@@ -1,29 +1,24 @@
-# 1. Obtener información de estado y versión del Host ESXi
 ---
-- name: Validar Conexion a VMware ESXi 8
-  hosts: esxi-01.pclinux.com
-  gather_facts: false
-  vars:
-    # Fuerza al Entorno de Ejecución a usar el intérprete de Python base
-    ansible_python_interpreter: /usr/bin/python3
-  tasks:
-    - name: Inyectar pyvmomi dentro del contenedor
-      ansible.builtin.pip:
-        name: pyvmomi
-        state: present
-        executable: /usr/bin/pip3
-      delegate_to: localhost
-
-- name: Info del Host ESXi Standalone
+- name: Gestion de Host VMware ESXi 8 Standalone
   hosts: localhost
   gather_facts: false
+  vars:
+    # Parametros de conexion centralizados
+    esxi_hostname: "192.168.1.220"
+    esxi_username: "root"
+    esxi_password: "TuPasswordSeguro"
+    validate_certs: false
+
   tasks:
-    - name: Recopilar todos los facts del hipervisor
-      community.vmware.vmware_host_facts:
-        hostname: "192.168.1.220"
-        validate_certs: false
+    # 1. Obtener información de estado y versión del Host ESXi
+    - name: 1. Recopilar todos los facts del hipervisor
+      community.vmware.vmware_host_info:
+        hostname: "{{ esxi_hostname }}"
+        username: "{{ esxi_username }}"
+        password: "{{ esxi_password }}"
+        validate_certs: "{{ validate_certs }}"
       register: host_facts
+
     - name: Imprimir la version del ESXi
       ansible.builtin.debug:
-        msg: "El host esta ejecutando la version: {{ host_facts.ansible_facts.vmware_host_version }}"
-
+        msg: "El host esta ejecutando la version: {{ host_facts.hosts_info[esxi_hostname].Host_Software_Version }}"
