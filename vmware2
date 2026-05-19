@@ -1,0 +1,28 @@
+# 2. Generar un inventario visual de las Máquinas Virtuales actuales
+---
+- name: Validar Conexion a VMware ESXi 8
+  hosts: esxi-01.pclinux.com
+  gather_facts: false
+  vars:
+    # Fuerza al Entorno de Ejecución a usar el intérprete de Python base
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+    - name: Inyectar pyvmomi dentro del contenedor
+      ansible.builtin.pip:
+        name: pyvmomi
+        state: present
+        executable: /usr/bin/pip3
+      delegate_to: localhost
+
+- name: Listar todas las VMs del ESXi
+  hosts: esxi-01.pclinux.com
+  gather_facts: false
+  tasks:
+    - name: Consultar la API para extraer el registro
+      community.vmware.vmware_vm_info:
+        hostname: "192.168.1.220"
+        validate_certs: false
+      register: listado_vms
+    - name: Mostrar unicamente los nombres de las maquinas
+      ansible.builtin.debug:
+        var: listado_vms.virtual_machines | map(attribute='guest_name') | list
