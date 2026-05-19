@@ -1,3 +1,4 @@
+---
 - name: Info del Host ESXi Standalone
   hosts: esxi-01.pclinux.com
   gather_facts: false
