@@ -18,6 +18,6 @@
         username: "{{ lookup('ansible.builtin.env', 'VMWARE_USER') }}"
         password: "{{ lookup('ansible.builtin.env', 'VMWARE_PASSWORD') }}"
         validate_certs: false
-        name: "Servidor_Aplicativo_01"
+        name: "FREEBSD"
         state: powered-on
       delegate_to: localhost
