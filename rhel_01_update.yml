@@ -1,0 +1,6 @@
+---
+- name: RHEL B1 - Actualizar paquetes
+  hosts: rhel_nodes
+  become: yes
+  tasks:
+    - ansible.builtin.dnf: name=* state=latest
